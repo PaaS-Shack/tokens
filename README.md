@@ -1,35 +1,139 @@
 [![Moleculer](https://badgen.net/badge/Powered%20by/Moleculer/0e83cd)](https://moleculer.services)
+## Tokens Service
 
-# kube
-This is a [Moleculer](https://moleculer.services/)-based microservices project. Generated with the [Moleculer CLI](https://moleculer.services/docs/0.14/moleculer-cli.html).
+### Service Configuration
 
-## Usage
-Start the project with `npm run dev` command. 
-In the terminal, try the following commands:
-- `nodes` - List all connected nodes.
-- `actions` - List all registered service actions.
-- `call greeter.hello` - Call the `greeter.hello` action.
-- `call greeter.welcome --name John` - Call the `greeter.welcome` action with the `name` parameter.
+- Name: tokens
+- Version: 1
 
+### Dependencies
 
+- None
 
-## Services
-- **api**: API Gateway services
-- **greeter**: Sample service with `hello` and `welcome` actions.
+### Service Settings
 
+- Fields:
+  - type:
+    - Type: enum
+    - Values: C.TOKEN_TYPES
+    - Required: true
+  - name:
+    - Type: string
+    - Max length: 255
+  - token:
+    - Type: string
+    - Required: true
+  - expiry:
+    - Type: number
+    - Integer: true
+  - owner:
+    - Type: string
+    - Required: true
+  - createdAt:
+    - Type: number
+    - Readonly: true
+    - onCreate: () => Date.now()
+  - lastUsedAt:
+    - Type: number
+    - Readonly: true
+    - Hidden: byDefault
 
-## Useful links
+- Indexes:
+  - token (unique)
+  - type, token
+  - type, owner
+  - expiry
 
-* Moleculer website: https://moleculer.services/
-* Moleculer Documentation: https://moleculer.services/docs/0.14/
+### Crons
 
-## NPM scripts
+- ClearExpiredTokens:
+  - Name: "ClearExpiredTokens"
+  - CronTime: "0 0 * * * *"
+  - OnTick:
+    - Action: "v1.tokens.clearExpired"
 
-- `npm run dev`: Start development mode (load all services locally with hot-reload & REPL)
-- `npm run start`: Start production mode (set `SERVICES` env variable to load certain services)
-- `npm run cli`: Start a CLI and connect to production. Don't forget to set production namespace with `--ns` argument in script
-- `npm run lint`: Run ESLint
-- `npm run ci`: Run continuous test mode with watching
-- `npm test`: Run tests & generate coverage report
-- `npm run dc:up`: Start the stack with Docker Compose
-- `npm run dc:down`: Stop the stack with Docker Compose
+### Actions
+
+#### generate
+
+- Params:
+  - type:
+    - Type: enum
+    - Values: C.TOKEN_TYPES
+  - expiry:
+    - Type: number
+    - Integer: true
+    - Optional: true
+  - owner:
+    - Type: string
+
+- Handler:
+  - Generates a new token using `generateToken` method.
+  - Creates a new entity with the generated token and other parameters.
+  - Returns the response with the generated token.
+
+#### check
+
+- Params:
+  - type:
+    - Type: enum
+    - Values: C.TOKEN_TYPES
+  - token:
+    - Type: string
+  - owner:
+    - Type: string
+    - Optional: true
+  - isUsed:
+    - Type: boolean
+    - Default: false
+
+- Handler:
+  - Finds an entity with the specified type and secure token.
+  - Validates the owner if provided.
+  - Checks the expiry of the token.
+  - Updates the `lastUsedAt` field if `isUsed` is true.
+  - Returns the entity if valid, otherwise null.
+
+#### remove
+
+- Params:
+  - type:
+    - Type: enum
+    - Values: C.TOKEN_TYPES
+  - token:
+    - Type: string
+
+- Handler:
+  - Finds an entity with the specified type and secure token.
+  - Removes the entity if found.
+  - Returns null.
+
+#### clearExpired
+
+- Visibility: protected
+
+- Handler:
+  - Removes expired tokens from the database.
+  - Logs the count of removed tokens.
+
+### Events
+
+- None
+
+### Methods
+
+#### generateToken
+
+- Parameters: len (number)
+- Returns an object containing the generated token and its secure version.
+
+#### secureToken
+
+- Parameters: token (string)
+- Returns the secure version of the token using HMAC with a salt.
+
+### Lifecycle Hooks
+
+- created: Checks if the environment variable 'TOKEN_SALT' is configured.
+- started: No implementation.
+- stopped: No implementation.
