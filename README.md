@@ -1,139 +1,47 @@
-[![Moleculer](https://badgen.net/badge/Powered%20by/Moleculer/0e83cd)](https://moleculer.services)
-## Tokens Service
+# Paas-Shack Project README
 
-### Service Configuration
+Welcome to the Paas-Shack project! This GitHub organization provides a set of Moleculer.js services that help manage infrastructure and streamline the development of microservices-based applications. In this README, you'll find an overview of the project, its services, and links to detailed documentation for each service.
 
-- Name: tokens
-- Version: 1
+## Project Overview
 
-### Dependencies
+Paas-Shack aims to simplify the development and management of microservices and infrastructure-related tasks by offering a collection of Moleculer.js services. Whether you need to manage tokens, secrets, or other critical aspects of your microservices application, our services are designed to make your life easier.
 
-- None
+### Services Included
 
-### Service Settings
+Here are some of the key services included in the Paas-Shack project:
 
-- Fields:
-  - type:
-    - Type: enum
-    - Values: C.TOKEN_TYPES
-    - Required: true
-  - name:
-    - Type: string
-    - Max length: 255
-  - token:
-    - Type: string
-    - Required: true
-  - expiry:
-    - Type: number
-    - Integer: true
-  - owner:
-    - Type: string
-    - Required: true
-  - createdAt:
-    - Type: number
-    - Readonly: true
-    - onCreate: () => Date.now()
-  - lastUsedAt:
-    - Type: number
-    - Readonly: true
-    - Hidden: byDefault
+1. [**Tokens Service**](tokens.md): The Tokens service provides functionality to generate, validate, and manage various types of tokens, such as verification tokens, passwordless tokens, password reset tokens, and API keys. It plays a crucial role in securing APIs, implementing authentication, and enabling secure communication between microservices.
 
-- Indexes:
-  - token (unique)
-  - type, token
-  - type, owner
-  - expiry
+2. [**Secrets Service**](secrets.md): The Secrets service offers a secure way to manage secrets and sensitive information in your microservices application. It allows you to store, retrieve, and manage secrets while ensuring they are encrypted and protected from unauthorized access.
 
-### Crons
+## Detailed Documentation
 
-- ClearExpiredTokens:
-  - Name: "ClearExpiredTokens"
-  - CronTime: "0 0 * * * *"
-  - OnTick:
-    - Action: "v1.tokens.clearExpired"
+For more detailed information about each service and how to use them, please refer to the following documentation:
 
-### Actions
+- [**Tokens Service Documentation**](tokens.md): Learn how to integrate and use the Tokens service to manage tokens effectively. This service is essential for securing your microservices and implementing authentication and authorization mechanisms.
 
-#### generate
+- [**Secrets Service Documentation**](secrets.md): Discover how to leverage the Secrets service to securely store and manage sensitive information within your microservices architecture. Protect your secrets and ensure they are only accessible to authorized services.
 
-- Params:
-  - type:
-    - Type: enum
-    - Values: C.TOKEN_TYPES
-  - expiry:
-    - Type: number
-    - Integer: true
-    - Optional: true
-  - owner:
-    - Type: string
+## Getting Started
 
-- Handler:
-  - Generates a new token using `generateToken` method.
-  - Creates a new entity with the generated token and other parameters.
-  - Returns the response with the generated token.
+To get started with the Paas-Shack project and use its services in your own microservices application, follow these steps:
 
-#### check
+1. Clone the Paas-Shack GitHub repository to your local development environment:
 
-- Params:
-  - type:
-    - Type: enum
-    - Values: C.TOKEN_TYPES
-  - token:
-    - Type: string
-  - owner:
-    - Type: string
-    - Optional: true
-  - isUsed:
-    - Type: boolean
-    - Default: false
+   ```bash
+   git clone https://github.com/Paas-Shack/tokens.git
+   ```
 
-- Handler:
-  - Finds an entity with the specified type and secure token.
-  - Validates the owner if provided.
-  - Checks the expiry of the token.
-  - Updates the `lastUsedAt` field if `isUsed` is true.
-  - Returns the entity if valid, otherwise null.
+2. Explore the project structure and services provided.
 
-#### remove
+3. Refer to the documentation links above to understand how to integrate and use the Tokens and Secrets services in your application.
 
-- Params:
-  - type:
-    - Type: enum
-    - Values: C.TOKEN_TYPES
-  - token:
-    - Type: string
+4. Customize the services to suit your specific use case and needs.
 
-- Handler:
-  - Finds an entity with the specified type and secure token.
-  - Removes the entity if found.
-  - Returns null.
+5. Contribute to the project by submitting pull requests, reporting issues, or suggesting improvements. We welcome community contributions!
 
-#### clearExpired
+## Support and Feedback
 
-- Visibility: protected
+If you have any questions, encounter issues, or would like to provide feedback, please don't hesitate to reach out. You can open issues in the respective service repositories or contact us through our GitHub organization.
 
-- Handler:
-  - Removes expired tokens from the database.
-  - Logs the count of removed tokens.
-
-### Events
-
-- None
-
-### Methods
-
-#### generateToken
-
-- Parameters: len (number)
-- Returns an object containing the generated token and its secure version.
-
-#### secureToken
-
-- Parameters: token (string)
-- Returns the secure version of the token using HMAC with a salt.
-
-### Lifecycle Hooks
-
-- created: Checks if the environment variable 'TOKEN_SALT' is configured.
-- started: No implementation.
-- stopped: No implementation.
+Thank you for choosing Paas-Shack services for your microservices project. We hope these services simplify your development process and enhance the security and functionality of your applications. Happy coding!

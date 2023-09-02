@@ -2,11 +2,11 @@
 
 const _ = require("lodash");
 const crypto = require("crypto");
-const C = require("../constants");
 
 const DbService = require("db-mixin");
 const Cron = require("cron-mixin");
 
+const TOKEN_TYPES = ["verification", "passwordless", "password-reset", "api-key"]
 
 const TOKEN_LENGTH = 50;
 
@@ -39,17 +39,31 @@ module.exports = {
 		fields: {
 			type: {
 				type: "enum",
-				values: C.TOKEN_TYPES,
+				values: TOKEN_TYPES,
 				required: true
 			},
 			name: { type: "string", max: 255 }, // for user API keys
 			token: { type: "string", required: true },
 			expiry: { type: "number", integer: true },
 			owner: { type: "string", required: true }, // TODO: validate via accounts.resolve
-			createdAt: { type: "number", readonly: true, onCreate: () => Date.now() },
-			lastUsedAt: { type: "number", readonly: true, hidden: "byDefault" } // for API keys
-		},
 
+			lastUsedAt: { type: "number", readonly: true, hidden: "byDefault" }, // for API keys
+			
+            ...DbService.FIELDS,// inject dbservice fields
+        },
+
+        // default database populates
+        defaultPopulates: [],
+
+        // database scopes
+        scopes: {
+            ...DbService.SCOPE,// inject dbservice scope
+        },
+
+        // default database scope
+        defaultScopes: [...DbService.DSCOPE],// inject dbservice dscope
+
+		// Indexes
 		indexes: [
 			{ fields: "token", unique: true },
 			{ fields: ["type", "token"] },
@@ -74,18 +88,27 @@ module.exports = {
 	actions: {
 		/**
 		 * Generate a new token.
+		 * Return with the token entity.
+		 * 
+		 * @param {Enum} type - Token type	
+		 * @param {Number} expiry - Expiry time in milliseconds
+		 * @param {String} owner - Owner ID
+		 * 
+		 * @returns {Object} Token entity
 		 */
 		generate: {
 			params: {
 				type: {
 					type: "enum",
-					values: C.TOKEN_TYPES
+					values: TOKEN_TYPES
 				},
 				expiry: { type: "number", integer: true, optional: true },
 				owner: { type: "string" }
 			},
 			async handler(ctx) {
 				const { token, secureToken } = this.generateToken(TOKEN_LENGTH);
+
+
 				const res = await this.createEntity(ctx, {
 					...ctx.params,
 					token: secureToken
@@ -97,18 +120,26 @@ module.exports = {
 
 		/**
 		 * Check a token exist & not expired.
+		 * If `isUsed` is `true`, it will update the `lastUsedAt` field.
+		 * Return with the token entity.
+		 * 
+		 * @param {Enum} type - Token type
+		 * @param {String} token - Token value	
+		 * @param {String} owner - Owner ID
+		 * @param {Boolean} isUsed - Update the `lastUsedAt` field
 		 */
 		check: {
 			params: {
 				type: {
 					type: "enum",
-					values: C.TOKEN_TYPES
+					values: TOKEN_TYPES
 				},
 				token: { type: "string" },
 				owner: { type: "string", optional: true },
 				isUsed: { type: "boolean", default: false }
 			},
 			async handler(ctx) {
+				// Check token
 				let entity = await this.findEntity(ctx, {
 					query: {
 						type: ctx.params.type,
@@ -116,6 +147,7 @@ module.exports = {
 					}
 				});
 				if (entity) {
+					// Check owner
 					if (!ctx.params.owner || entity.owner == ctx.params.owner) {
 						if (entity.expiry && entity.expiry < Date.now()) return false;
 
@@ -135,16 +167,22 @@ module.exports = {
 
 		/**
 		 * Remove an invalidated token
+		 * 
+		 * @param {Enum} type - Token type
+		 * @param {String} token - Token value
+		 * 
+		 * @returns {Object} Removed token entity
 		 */
 		remove: {
 			params: {
 				type: {
 					type: "enum",
-					values: C.TOKEN_TYPES
+					values: TOKEN_TYPES
 				},
 				token: { type: "string" }
 			},
 			async handler(ctx) {
+				// Check token
 				const entity = await this.findEntity(ctx, {
 					query: {
 						type: ctx.params.type,
@@ -152,6 +190,7 @@ module.exports = {
 					}
 				});
 				if (entity) {
+					// Remove token
 					await this.removeEntity(ctx, entity);
 				}
 				return null;
@@ -160,6 +199,11 @@ module.exports = {
 
 		/**
 		 * Clear expired tokens.
+		 * This action is called by a cron job.
+		 * 
+		 * 
+		 * 
+		 * @returns {Number} Count of removed tokens
 		 */
 		clearExpired: {
 			visibility: "protected",
@@ -208,7 +252,7 @@ module.exports = {
 	 */
 	created() {
 		if (!process.env.TOKEN_SALT) {
-
+//
 			this.broker.fatal("Environment variable 'TOKEN_SALT' must be configured!");
 
 		}
